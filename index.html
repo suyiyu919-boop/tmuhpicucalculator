@@ -202,6 +202,21 @@ function formatConcentrationWithConversion(value, fromUnit, toUnit, decimalsFrom
   }
   return text;
 }
+function formatConcentrationResultText(value, standardUnit, recommendedUnit) {
+  const base = formatConcentrationWithConversion(value, standardUnit, recommendedUnit);
+  const approxStandard = Math.round(value * 10) / 10;
+  if (standardUnit !== recommendedUnit && Math.abs(approxStandard) < 0.05) {
+    const converted = convertConcentrationValue(value, standardUnit, recommendedUnit);
+    if (converted !== null) {
+      const approxConverted = Math.round(converted * 10) / 10;
+      const approxText = Math.abs(approxConverted - Math.round(approxConverted)) < 1e-9
+        ? `${Math.round(approxConverted)}`
+        : approxConverted.toFixed(1);
+      return `${base}（約 ${approxText} ${recommendedUnit}）`;
+    }
+  }
+  return `${base}（約 ${approxStandard.toFixed(1)} ${standardUnit}）`;
+}
 function formatConcentrationRange(data) {
   const low = data.recommended_concentration_low;
   const high = data.recommended_concentration_high;
@@ -674,7 +689,7 @@ function calculateCustomConcentration() {
   lines.push(`藥物：${drug}`);
   lines.push(`體重：${weight.toFixed(2)} kg`);
   lines.push(`目標劑量：${target} ${data.infusion_calc_unit}`);
-  lines.push(`所需濃度：${formatConcentrationWithConversion(conc, data.standard_concentration_unit, data.recommended_concentration_unit || data.standard_concentration_unit)}（約 ${(Math.round(conc * 10) / 10).toFixed(1)} ${data.standard_concentration_unit}）`);
+  lines.push(`所需濃度：${formatConcentrationResultText(conc, data.standard_concentration_unit, data.recommended_concentration_unit || data.standard_concentration_unit)}`);
   lines.push(`目標流速：${flow.toFixed(2)} mL/hr`);
   if (data.diluent_recommendation) lines.push(`建議稀釋液：${data.diluent_recommendation}`);
   const cr = formatConcentrationRange(data);
