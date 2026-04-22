@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ICU Drug Calculator v1.00</title>
+<style>
+  :root {
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --border: #d8dbe7;
+    --text: #1f2430;
+    --muted: #6b7280;
+    --blue: #1565c0;
+    --warn: #b26a00;
+    --danger: #c62828;
+    --info: #6c757d;
+    --highlight: #fff3cd;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background: var(--bg); color: var(--text);
+  }
+  .page {
+    max-width: 1400px; margin: 0 auto; padding: 12px;
+  }
+  .header {
+    display: flex; gap: 12px; justify-content: space-between; align-items: flex-start;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 12px;
+  }
+  .header-meta { font-size: 13px; color: var(--muted); line-height: 1.5; white-space: pre-line; }
+  button {
+    border: 1px solid var(--border); background: #fff; border-radius: 10px;
+    padding: 10px 14px; cursor: pointer; font: inherit;
+  }
+  button.primary { background: #1f6feb; color: white; border-color: #1f6feb; }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  .layout {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+    .header { flex-direction: column; }
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px;
+  }
+  .card h2, .card h3 { margin: 0 0 10px 0; font-size: 18px; }
+  .field {
+    display: grid; gap: 6px; margin-bottom: 10px;
+  }
+  .field-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  @media (max-width: 720px) { .field-row { grid-template-columns: 1fr; } }
+  label { font-size: 14px; }
+  input, select, textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font: inherit; background: white;
+  }
+  .toolbar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .result {
+    border: 1px solid var(--border); border-radius: 10px; background: #fff;
+    padding: 12px; min-height: 280px; white-space: pre-wrap; line-height: 1.55;
+    font-size: 16px;
+  }
+  .line { display: block; }
+  .boldnum { font-weight: 700; }
+  .drug-header { color: var(--blue); font-weight: 700; }
+  .highlight { background: var(--highlight); padding: 1px 2px; border-radius: 4px; }
+  .info { color: var(--info); }
+  .warning { color: var(--warn); font-weight: 700; }
+  .danger { color: var(--danger); font-weight: 700; }
+  .small { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="header-meta">ICU Drug Calculator v1.00 ｜ Last update: 2026-04-21
+Developed by Yi-Yu Su, MD, PhD ｜ Taipei Medical University Hospital
+※本工具僅供臨床輔助，請手動驗算並依實際情況判斷</div>
+    <button id="clearAllBtn">清空全部</button>
+  </div>
+
+  <div class="layout">
+    <div class="card">
+      <h2>主要藥物計算（選藥與劑量）</h2>
+      <div class="field">
+        <label for="weight">體重 (kg)</label>
+        <input id="weight" inputmode="decimal" placeholder="例如 12.5" />
+      </div>
+      <div class="field">
+        <label for="mode">選擇模式</label>
+        <select id="mode"></select>
+      </div>
+      <div id="dynamicFields"></div>
+      <div class="toolbar" style="justify-content:flex-start;">
+        <button class="primary" id="calcMainBtn">計算主要結果</button>
+      </div>
+
+      <div class="toolbar">
+        <button id="copyMainBtn">複製結果</button>
+      </div>
+      <div class="result" id="mainResult"></div>
+    </div>
+
+    <div class="card">
+      <h2>持續輸注計算（流速／濃度）</h2>
+      <div class="field">
+        <label for="infusionDrug">選擇藥物</label>
+        <select id="infusionDrug"></select>
+      </div>
+
+      <div class="card" style="padding:10px; margin-bottom:10px;">
+        <h3>標準濃度算流速</h3>
+        <div class="field">
+          <label id="targetDoseLabel" for="infusionTarget">目標輸注劑量</label>
+          <input id="infusionTarget" inputmode="decimal" />
+        </div>
+        <button class="primary" id="calcFlowBtn">計算流速</button>
+      </div>
+
+      <div class="card" style="padding:10px; margin-bottom:10px;">
+        <h3>指定流速算濃度</h3>
+        <div class="field-row">
+          <div class="field">
+            <label id="customDoseLabel" for="customDose">目標劑量</label>
+            <input id="customDose" inputmode="decimal" value="1" />
+          </div>
+          <div class="field">
+            <label for="customFlow">目標流速（mL/hr）</label>
+            <input id="customFlow" inputmode="decimal" value="1" />
+          </div>
+        </div>
+        <button class="primary" id="calcConcBtn">計算濃度</button>
+      </div>
+
+      <div class="toolbar">
+        <button id="copyClinicalBtn">複製臨床備註</button>
+        <button id="copyInfusionBtn">複製結果</button>
+      </div>
+      <div class="result" id="infusionResult"></div>
+      <div class="small" id="copyStatus"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const MODE_SINGLE = "單一藥物";
+const MODE_RSI = "RSI";
+const MODE_PAINFUL = "疼痛性處置鎮靜";
+const MODE_IMAGE = "影像檢查鎮靜";
+const MODE_PROTON = "放射／質子治療鎮靜";
+const MODE_MV = "機械通氣持續鎮靜";
+const MODE_PRESSOR = "升壓藥/強心劑";
+const MODE_EDUCATION = "泡藥基礎教學";
+const ALL_MODES = [MODE_SINGLE, MODE_RSI, MODE_PAINFUL, MODE_IMAGE, MODE_PROTON, MODE_MV, MODE_PRESSOR, MODE_EDUCATION];
+const sedative_options = ["Ketamine", "Midazolam", "Propofol"];
+const sedative_options_extended = ["Midazolam", "Propofol", "Dexmedetomidine", "Ketamine"];
+const analgesic_options = ["Fentanyl", "Morphine"];
+const paralysis_options_rsi = ["Succinylcholine", "Rocuronium", "Cisatracurium"];
+const paralysis_options_mv = ["Rocuronium", "Cisatracurium"];
+const pressor_options = ["Epinephrine", "Norepinephrine", "Dopamine", "Dobutamine"];
+const single_drug_options = ["Ketamine", "Midazolam", "Propofol", "Dexmedetomidine", "Fentanyl", "Morphine", "Rocuronium", "Cisatracurium", "Epinephrine", "Norepinephrine", "Dopamine", "Dobutamine"];
+const MIN_PRACTICAL_FLOW_ML_HR = 0.05;
+const drug_data = {"Ketamine": {"category": "鎮靜/止痛", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.5, "bolus_high_per_kg": 1.0, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mg/kg/hr", "infusion_low_per_kg": 0.5, "infusion_high_per_kg": 2.0, "infusion_unit_calculated": "mg/hr", "infusion_calc_unit": "mg/kg/hr", "standard_concentration_value": 20, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "20 mg/mL（可用原液 50–100 mg/mL；或稀釋至 20 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 1, "recommended_concentration_high": 20, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 4.0, "note": "具止痛效果、支氣管擴張、注意 emergence phenomenon"}, "Midazolam": {"category": "鎮靜", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.05, "bolus_high_per_kg": 0.1, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 0.5, "infusion_high_per_kg": 3.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "1 mg/mL（建議使用；可由 5 mg/mL 稀釋）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.3, "recommended_concentration_high": 5, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 5.0, "note": "呼吸抑制、低血壓、無止痛效果"}, "Propofol": {"category": "鎮靜", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.5, "bolus_high_per_kg": 1.0, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mg/kg/hr", "infusion_low_per_kg": 1.0, "infusion_high_per_kg": 4.0, "infusion_unit_calculated": "mg/hr", "infusion_calc_unit": "mg/kg/hr", "standard_concentration_value": 10, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "10 mg/mL（標準；可稀釋至 ≥2 mg/mL；使用前搖勻）", "diluent_recommendation": "如需稀釋，僅建議使用 D5W", "recommended_concentration_low": 2, "recommended_concentration_high": 10, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 4.0, "note": "短期鎮靜使用；注意呼吸抑制、低血壓與 PRIS 風險"}, "Dexmedetomidine": {"category": "鎮靜", "loading_unit_per_kg": "mcg/kg", "loading_low_per_kg": 0.5, "loading_high_per_kg": 1.0, "loading_unit_calculated": "mcg", "infusion_unit_per_kg": "mcg/kg/hr", "infusion_low_per_kg": 0.2, "infusion_high_per_kg": 1.0, "infusion_unit_calculated": "mcg/hr", "infusion_calc_unit": "mcg/kg/hr", "standard_concentration_value": 4, "standard_concentration_unit": "mcg/mL", "route_bolus": "IV loading dose over 10 min (optional)", "route_infusion": "IV infusion", "dilution": "4 mcg/mL（200 mcg + NS 至 50 mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_high": 4, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 1.5, "note": "心搏過緩、低血壓；loading dose 非常規使用，血流動力不穩者避免；停藥需漸減避免反彈性高血壓"}, "Fentanyl": {"category": "止痛", "bolus_unit_per_kg": "mcg/kg", "bolus_low_per_kg": 0.5, "bolus_high_per_kg": 2.0, "bolus_unit_calculated": "mcg", "infusion_unit_per_kg": "mcg/kg/hr", "infusion_low_per_kg": 0.5, "infusion_high_per_kg": 5.0, "infusion_unit_calculated": "mcg/hr", "infusion_calc_unit": "mcg/kg/hr", "standard_concentration_value": 10, "standard_concentration_unit": "mcg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "10 mcg/mL（常用；亦可 2 mcg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 10, "recommended_concentration_high": 50, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 10.0, "note": "呼吸抑制、胸壁僵硬、IWS 風險"}, "Morphine": {"category": "止痛", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.05, "bolus_high_per_kg": 0.1, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mg/kg/hr", "infusion_low_per_kg": 0.01, "infusion_high_per_kg": 0.04, "infusion_unit_calculated": "mg/hr", "infusion_calc_unit": "mg/kg/hr", "standard_concentration_value": 0.5, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "0.5 mg/mL（常用；範圍 0.2–1 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.1, "recommended_concentration_high": 5, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 0.06, "note": "呼吸抑制、低血壓、組織胺釋放"}, "Rocuronium": {"category": "鬆肌", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.6, "bolus_high_per_kg": 1.2, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 5.0, "infusion_high_per_kg": 12.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 10, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "10 mg/mL（可直接使用；或稀釋至 0.5–5 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.5, "recommended_concentration_high": 10, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 15.0, "note": "肌肉鬆弛藥"}, "Cisatracurium": {"category": "鬆肌", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.1, "bolus_high_per_kg": 0.2, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 1.0, "infusion_high_per_kg": 3.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "建議 infusion 濃度 0.1–0.2 mg/mL；實務上可見 1–2 mg/mL（含原液 2 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.1, "recommended_concentration_high": 2, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 5.0, "note": "肌肉鬆弛藥"}, "Epinephrine": {"category": "升壓藥/強心劑", "has_bolus": true, "bolus_unit_per_kg": "mg/kg/dose", "bolus_low_per_kg": 0.01, "bolus_high_per_kg": 0.01, "bolus_unit_calculated": "mg/dose", "bolus_standard_concentration": "0.1 mg/mL（1:10,000）", "bolus_volume_per_kg": "0.1 mL/kg", "neonate_bolus_note": "Neonate 可用 0.02 mg/kg/dose（= 0.2 mL/kg）", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 0.02, "infusion_high_per_kg": 0.3, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 0.02, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "Continuous IV infusion", "dilution": "常用 10–40 mcg/mL；高濃度需中心靜脈與嚴密監測", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 10, "recommended_concentration_high": 40, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 0.5, "note": "敗血性休克第一線升壓藥，也是CPR常用藥。中心靜脈優先；周邊或骨針僅短時間使用，並嚴密監測滲漏。"}, "Norepinephrine": {"category": "升壓藥/強心劑", "has_bolus": false, "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 0.02, "infusion_high_per_kg": 0.5, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 0.016, "standard_concentration_unit": "mg/mL", "route_infusion": "Continuous IV infusion", "dilution": "常用 16–64 mcg/mL", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 16, "recommended_concentration_high": 64, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 1.0, "note": "敗血性休克第一線升壓藥。中心靜脈優先；周邊或骨針僅短時間使用並嚴密監測滲漏。"}, "Dopamine": {"category": "升壓藥/強心劑", "has_bolus": false, "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 2.0, "infusion_high_per_kg": 10.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1.6, "standard_concentration_unit": "mg/mL", "route_infusion": "Continuous IV infusion", "dilution": "常用 800–3200 mcg/mL", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 800, "recommended_concentration_high": 3200, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 15.0, "note": "升壓/正性肌力支持；可能增加心律不整風險。"}, "Dobutamine": {"category": "升壓藥/強心劑", "has_bolus": false, "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 1.0, "infusion_high_per_kg": 10.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1.0, "standard_concentration_unit": "mg/mL", "route_infusion": "Continuous IV infusion", "dilution": "常用 1000–4000 mcg/mL", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 1000, "recommended_concentration_high": 4000, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 15.0, "note": "以增加心輸出為主，較適用低心輸出狀態；注意心搏過速與低血壓。"}};
+const rsi_drug_data = {"Ketamine": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.5, "dose_high_per_kg": 1.0, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "20 mg/mL（可用原液 50–100 mg/mL；或稀釋至 20 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "note": "誘導/鎮靜藥，且具止痛效果"}, "Midazolam": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.05, "dose_high_per_kg": 0.1, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "1 mg/mL（建議使用；可由 5 mg/mL 稀釋）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "note": "誘導/鎮靜藥"}, "Propofol": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.5, "dose_high_per_kg": 1.0, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "10 mg/mL（標準；可稀釋至 ≥2 mg/mL；使用前搖勻）", "diluent_recommendation": "如需稀釋，僅建議使用 D5W", "note": "誘導/鎮靜藥，注意低血壓"}, "Fentanyl": {"dose_unit_per_kg": "mcg/kg", "dose_low_per_kg": 0.5, "dose_high_per_kg": 2.0, "dose_unit_calculated": "mcg", "route": "IV bolus", "dilution": "10 mcg/mL（常用；亦可 2 mcg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "note": "額外止痛藥"}, "Morphine": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.05, "dose_high_per_kg": 0.1, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "0.5 mg/mL（常用；範圍 0.2–1 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "note": "額外止痛藥"}, "Succinylcholine": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 1.0, "dose_high_per_kg": 2.0, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "可直接使用（undiluted）", "note": "鬆肌藥"}, "Rocuronium": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.6, "dose_high_per_kg": 1.2, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "10 mg/mL（可直接使用；或稀釋至 0.5–5 mg/mL）", "note": "鬆肌藥"}, "Cisatracurium": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.1, "dose_high_per_kg": 0.2, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "1–2 mg/mL（常用；建議範圍 0.1–0.2 mg/mL）", "note": "鬆肌藥"}};
+
+let fieldValues = {};
+let lastClinicalNote = "";
+let resultsDirty = false;
+
+const el = (id) => document.getElementById(id);
+
+function msgError(text="輸入值無效") { return `ⓘ輸入：${text}`; }
+function msgWarning(text="超過建議範圍") { return `⚠️提醒：${text}`; }
+function msgDanger(text="高於臨床警示門檻") { return `❗警示：${text}`; }
+function msgInfo(text="一般提示") { return `ⓘ提示：${text}`; }
+
+function cleanNumericText(text) {
+  return String(text ?? "").trim().replace(/，|．|。|,/g, ".").replace(/\s+/g, "");
+}
+function parseFloatSafe(text) {
+  const x = parseFloat(cleanNumericText(text));
+  return Number.isFinite(x) ? x : null;
+}
+function convertConcentrationValue(value, fromUnit, toUnit) {
+  if (fromUnit === toUnit) return value;
+  if (fromUnit === "mg/mL" && toUnit === "mcg/mL") return value * 1000;
+  if (fromUnit === "mcg/mL" && toUnit === "mg/mL") return value / 1000;
+  return null;
+}
+function formatConcentrationWithConversion(value, fromUnit, toUnit, decimalsFrom=4, decimalsTo=1) {
+  let text = `${value.toFixed(decimalsFrom)} ${fromUnit}`;
+  const converted = convertConcentrationValue(value, fromUnit, toUnit);
+  if (converted !== null && fromUnit !== toUnit) {
+    text += `（= ${converted.toFixed(decimalsTo)} ${toUnit}）`;
+  }
+  return text;
+}
+function formatConcentrationRange(data) {
+  const low = data.recommended_concentration_low;
+  const high = data.recommended_concentration_high;
+  const unit = data.recommended_concentration_unit || data.standard_concentration_unit || "";
+  if (low == null && high == null) return null;
+  if (low != null && high != null) {
+    if (Math.abs(low - high) < 1e-12) return `${fmtGeneral(low)} ${unit}`;
+    return `${fmtGeneral(low)} - ${fmtGeneral(high)} ${unit}`;
+  }
+  if (high != null) return `≤ ${fmtGeneral(high)} ${unit}`;
+  return `≥ ${fmtGeneral(low)} ${unit}`;
+}
+function getUnitNotice(data) {
+  const unit = data.infusion_calc_unit || "";
+  if (unit === "mg/kg/hr" || unit === "mcg/kg/hr") return msgInfo(`本藥物慣用單位為 ${unit}`);
+  return null;
+}
+function formatWithApprox(value, unit) {
+  const rounded = Math.round(value * 10) / 10;
+  return `${value.toFixed(2)} ${unit}（約 ${rounded.toFixed(1)} ${unit}）`;
+}
+function getFlowPracticalWarning(flow) {
+  if (flow < MIN_PRACTICAL_FLOW_ML_HR) return msgWarning(`流速低於可實際輸注範圍（<${MIN_PRACTICAL_FLOW_ML_HR} mL/hr），請調整濃度或劑量`);
+  return null;
+}
+function getRateWarning(data, targetRate) {
+  const high = data.infusion_high_per_kg;
+  const absoluteMax = data.absolute_max_infusion;
+  const unit = data.infusion_calc_unit || "";
+  if (absoluteMax != null && targetRate > absoluteMax) return msgDanger(`高於臨床警示門檻（>${fmtGeneral(absoluteMax)} ${unit}）`);
+  if (high != null && targetRate > high) return msgWarning(`超過建議範圍（>${fmtGeneral(high)} ${unit}）`);
+  return null;
+}
+function getConcentrationWarning(data, concentration) {
+  const low = data.recommended_concentration_low;
+  const high = data.recommended_concentration_high;
+  const recommendedUnit = data.recommended_concentration_unit || data.standard_concentration_unit || "";
+  const actualUnit = data.standard_concentration_unit || "";
+  const converted = convertConcentrationValue(concentration, actualUnit, recommendedUnit);
+  if (converted === null) return msgError("濃度單位無法換算");
+  if (high != null && converted > high) return msgDanger(`濃度高於建議上限（>${fmtGeneral(high)} ${recommendedUnit}）`);
+  if (low != null && converted < low) return msgWarning(`濃度低於常用範圍（<${fmtGeneral(low)} ${recommendedUnit}）`);
+  return null;
+}
+function hasInfusion(drugName) {
+  return !!(drug_data[drugName] && drug_data[drugName].infusion_calc_unit);
+}
+function fmtGeneral(v) {
+  return Number.isInteger(v) ? String(v) : String(v);
+}
+function markDirty() {
+  resultsDirty = true;
+}
+function markClean() {
+  resultsDirty = false;
+}
+function convertTargetToMlPerHr(weight, targetRate, calcUnit, concentrationValue, concentrationUnit) {
+  if (calcUnit === "mg/kg/hr") {
+    const total = targetRate * weight;
+    return concentrationUnit === "mg/mL" ? total / concentrationValue : null;
+  }
+  if (calcUnit === "mcg/kg/hr") {
+    const total = targetRate * weight;
+    if (concentrationUnit === "mcg/mL") return total / concentrationValue;
+    if (concentrationUnit === "mg/mL") return (total / 1000) / concentrationValue;
+  }
+  if (calcUnit === "mcg/kg/min") {
+    const total = targetRate * weight * 60;
+    if (concentrationUnit === "mcg/mL") return total / concentrationValue;
+    if (concentrationUnit === "mg/mL") return (total / 1000) / concentrationValue;
+  }
+  return null;
+}
+function concentrationNeededForTarget(weight, targetRate, targetFlow, calcUnit, outputUnit) {
+  if (targetFlow <= 0) return null;
+  if (calcUnit === "mg/kg/hr") {
+    const total = targetRate * weight;
+    return outputUnit === "mg/mL" ? total / targetFlow : null;
+  }
+  if (calcUnit === "mcg/kg/hr") {
+    const total = targetRate * weight;
+    if (outputUnit === "mcg/mL") return total / targetFlow;
+    if (outputUnit === "mg/mL") return (total / targetFlow) / 1000;
+  }
+  if (calcUnit === "mcg/kg/min") {
+    const total = targetRate * weight * 60;
+    if (outputUnit === "mcg/mL") return total / targetFlow;
+    if (outputUnit === "mg/mL") return (total / targetFlow) / 1000;
+  }
+  return null;
+}
+
+function buildClinicalNote(drug, concentration, weight, flow, targetRate) {
+  const data = drug_data[drug];
+  let concUnit = data.recommended_concentration_unit || data.standard_concentration_unit;
+  let concValue = convertConcentrationValue(concentration, data.standard_concentration_unit, concUnit);
+  if (concValue === null) {
+    concValue = concentration;
+    concUnit = data.standard_concentration_unit;
+  }
+  const roundedConcValue = Math.round(concValue * 10) / 10;
+  const roundedFlow = Math.round(flow * 10) / 10;
+  const concText = Math.abs(roundedConcValue - Math.round(roundedConcValue)) < 1e-9 ? `${Math.round(roundedConcValue)} ${concUnit}` : `${roundedConcValue.toFixed(1)} ${concUnit}`;
+  let roundedConcStandard = convertConcentrationValue(roundedConcValue, concUnit, data.standard_concentration_unit);
+  if (roundedConcStandard === null) roundedConcStandard = concentration;
+  let actualRate;
+  const calcUnit = data.infusion_calc_unit;
+  if (calcUnit === "mg/kg/hr") {
+    actualRate = (roundedFlow * roundedConcStandard) / weight;
+  } else if (calcUnit === "mcg/kg/hr") {
+    const totalPerHr = data.standard_concentration_unit === "mg/mL" ? roundedFlow * roundedConcStandard * 1000 : roundedFlow * roundedConcStandard;
+    actualRate = totalPerHr / weight;
+  } else if (calcUnit === "mcg/kg/min") {
+    const totalPerHr = data.standard_concentration_unit === "mg/mL" ? roundedFlow * roundedConcStandard * 1000 : roundedFlow * roundedConcStandard;
+    actualRate = totalPerHr / weight / 60;
+  } else {
+    actualRate = targetRate;
+  }
+  let diluentText = (data.diluent_recommendation || "").replace("可使用 ", "").replace(" 稀釋", "");
+  if (!diluentText) diluentText = "D5W/NS";
+  const flowText = Math.abs(roundedFlow - Math.round(roundedFlow)) < 1e-9 ? `${Math.round(roundedFlow)}` : `${roundedFlow.toFixed(1).replace(/0$/, "").replace(/\.$/, "")}`;
+  return `${drug} ${concText} in ${diluentText}, run ${flowText} mL/hr = ${actualRate.toFixed(2)} ${data.infusion_calc_unit}`;
+}
+
+function educationText() {
+  return `=== 泡藥基礎教學 ===
+
+【標準流程】
+1. 確認欲使用藥物與目標劑量（mg/kg、mcg/kg/min 等）
+2. 確認可使用之稀釋液（如 NS、D5W）與建議濃度範圍
+3. 根據目標劑量與體重，決定希望的輸注流速（mL/hr）
+4. 反推所需泡製濃度（mg/mL 或 mcg/mL）
+5. 確認泡製完成之濃度落在安全且可行的範圍內
+6. 開立醫囑，並於備註清楚標示劑量與濃度
+
+【速算法（常用）】
+BW(kg) × 6 (mg) 加至 100 mL D5W
+→ 若輸注 X mL/hr，則約等於 X mcg/kg/min
+
+【臨床注意事項】
+• 中心靜脈優先使用於高濃度或高風險藥物（如升壓藥）
+• 周邊給藥時應使用較低濃度並密切監測滲漏
+• 注意不同藥物的最大建議濃度與穩定性
+• 持續輸注建議使用 infusion pump
+• 濃度與流速需雙重確認，避免劑量錯誤
+
+※請手動驗算以避免計算錯誤
+※請於醫囑備註清楚標示：藥物劑量與最終濃度`;
+}
+
+function formatStandardDrug(drugName, weight) {
+  const data = drug_data[drugName];
+  const unitNotice = getUnitNotice(data);
+  if (data.category === "升壓藥/強心劑") {
+    const lines = [`=== ${drugName} ===`, `類別：${data.category}`];
+    if (data.has_bolus) {
+      const bolus = data.bolus_low_per_kg * weight;
+      lines.push(`Bolus 劑量：${data.bolus_low_per_kg} ${data.bolus_unit_per_kg}`);
+      lines.push(`換算劑量：${bolus.toFixed(3)} ${data.bolus_unit_calculated}`);
+      lines.push(`Bolus 標準濃度：${data.bolus_standard_concentration}`);
+      lines.push(`Bolus 對應體積：${data.bolus_volume_per_kg || ""}`);
+      if (data.neonate_bolus_note) lines.push(`補充：${data.neonate_bolus_note}`);
+    }
+    const low = data.infusion_low_per_kg * weight;
+    const high = data.infusion_high_per_kg * weight;
+    let route = data.route_infusion;
+    if (data.has_bolus) route = `${data.route_bolus || ""} / ${route}`;
+    if (unitNotice) lines.push(unitNotice);
+    lines.push(`常用輸注劑量：${data.infusion_low_per_kg} - ${data.infusion_high_per_kg} ${data.infusion_unit_per_kg}`);
+    lines.push(`換算劑量：${low.toFixed(2)} - ${high.toFixed(2)} ${data.infusion_unit_calculated}`);
+    lines.push(`給藥方式：${route}`);
+    lines.push(`標準濃度：${data.standard_concentration_value} ${data.standard_concentration_unit}`);
+    lines.push(`稀釋建議：${data.dilution}`);
+    if (data.diluent_recommendation) lines.push(`建議稀釋液：${data.diluent_recommendation}`);
+    const cr = formatConcentrationRange(data);
+    if (cr) lines.push(`常用濃度範圍：${cr}`);
+    lines.push(`備註：${data.note}`);
+    return lines.join("\n");
+  }
+  if (drugName === "Dexmedetomidine") {
+    const ll = data.loading_low_per_kg * weight;
+    const lh = data.loading_high_per_kg * weight;
+    const il = data.infusion_low_per_kg * weight;
+    const ih = data.infusion_high_per_kg * weight;
+    const lines = [
+      `=== ${drugName} ===`,
+      `單次推注劑量：${data.loading_low_per_kg} - ${data.loading_high_per_kg} ${data.loading_unit_per_kg}`,
+      `換算劑量：${ll.toFixed(2)} - ${lh.toFixed(2)} ${data.loading_unit_calculated}`,
+      `給藥方式：${data.route_bolus}`
+    ];
+    if (unitNotice) lines.push(unitNotice);
+    lines.push(`常用輸注劑量：${data.infusion_low_per_kg} - ${data.infusion_high_per_kg} ${data.infusion_unit_per_kg}`);
+    lines.push(`換算劑量：${il.toFixed(2)} - ${ih.toFixed(2)} ${data.infusion_unit_calculated}`);
+    lines.push(`給藥方式：${data.route_infusion}`);
+    lines.push(`建議稀釋濃度：${data.dilution}`);
+    if (data.diluent_recommendation) lines.push(`建議稀釋液：${data.diluent_recommendation}`);
+    const cr = formatConcentrationRange(data);
+    if (cr) lines.push(`常用濃度範圍：${cr}`);
+    lines.push(`備註：${data.note}`);
+    return lines.join("\n");
+  }
+  const bl = data.bolus_low_per_kg * weight;
+  const bh = data.bolus_high_per_kg * weight;
+  const lines = [
+    `=== ${drugName} ===`,
+    `單次推注劑量：${data.bolus_low_per_kg} - ${data.bolus_high_per_kg} ${data.bolus_unit_per_kg}`,
+    `換算劑量：${bl.toFixed(2)} - ${bh.toFixed(2)} ${data.bolus_unit_calculated}`
+  ];
+  if (hasInfusion(drugName)) {
+    const il = data.infusion_low_per_kg * weight;
+    const ih = data.infusion_high_per_kg * weight;
+    if (unitNotice) lines.push(unitNotice);
+    lines.push(`常用輸注劑量：${data.infusion_low_per_kg} - ${data.infusion_high_per_kg} ${data.infusion_unit_per_kg}`);
+    lines.push(`換算劑量：${il.toFixed(2)} - ${ih.toFixed(2)} ${data.infusion_unit_calculated}`);
+    lines.push(`給藥方式：${data.route_bolus} / ${data.route_infusion}`);
+  } else {
+    lines.push(`給藥方式：${data.route_bolus}`);
+  }
+  lines.push(`建議稀釋濃度：${data.dilution}`);
+  if (data.diluent_recommendation) lines.push(`建議稀釋液：${data.diluent_recommendation}`);
+  const cr = formatConcentrationRange(data);
+  if (cr) lines.push(`常用濃度範圍：${cr}`);
+  lines.push(`備註：${data.note}`);
+  return lines.join("\n");
+}
+
+function formatRsiDrug(drugName, weight) {
+  const d = rsi_drug_data[drugName];
+  const low = d.dose_low_per_kg * weight;
+  const high = d.dose_high_per_kg * weight;
+  let text = `${drugName}\n  建議劑量：${d.dose_low_per_kg} - ${d.dose_high_per_kg} ${d.dose_unit_per_kg}\n  換算劑量：${low.toFixed(2)} - ${high.toFixed(2)} ${d.dose_unit_calculated}\n  給藥方式：${d.route}\n  建議稀釋濃度：${d.dilution}\n`;
+  if (d.diluent_recommendation) text += `  建議稀釋液：${d.diluent_recommendation}\n`;
+  text += `  備註：${d.note}\n`;
+  return text;
+}
+
+function renderResult(targetId, text) {
+  const target = el(targetId);
+  const lines = String(text || "").split("\n");
+  target.innerHTML = lines.map(line => {
+    const esc = line
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    let cls = "line";
+    if (/^===\s+[A-Za-z]/.test(line)) cls += " drug-header";
+    if (line.startsWith("❗")) cls += " danger";
+    else if (line.startsWith("⚠️")) cls += " warning";
+    else if (line.startsWith("ⓘ") || line.startsWith("ℹ️")) cls += " info";
+    if (line.includes("換算劑量：") || line.includes("建議流速：") || line.includes("所需濃度：")) cls += " highlight";
+    const withBoldNums = esc.replace(/(\d+\.\d+|\d+)/g, '<span class="boldnum">$1</span>');
+    return `<span class="${cls}">${withBoldNums || "&nbsp;"}</span>`;
+  }).join("");
+}
+
+function createSelectField(key, labelText, values, defaultValue) {
+  const wrap = document.createElement("div");
+  wrap.className = "field";
+  const label = document.createElement("label");
+  label.textContent = labelText;
+  const select = document.createElement("select");
+  select.dataset.key = key;
+  values.forEach(v => {
+    const opt = document.createElement("option");
+    opt.value = v; opt.textContent = v; select.appendChild(opt);
+  });
+  select.value = defaultValue;
+  select.addEventListener("change", () => {
+    fieldValues[key] = select.value;
+    updateInfusionDrugOptions();
+    markDirty();
+  });
+  fieldValues[key] = defaultValue;
+  wrap.appendChild(label);
+  wrap.appendChild(select);
+  return wrap;
+}
+
+function rebuildDynamicFields() {
+  const container = el("dynamicFields");
+  container.innerHTML = "";
+  fieldValues = {};
+  const mode = el("mode").value;
+  let info;
+  if (mode === MODE_SINGLE) {
+    container.appendChild(createSelectField("drug", "選擇藥物", single_drug_options, "Ketamine"));
+  } else if (mode === MODE_RSI) {
+    container.appendChild(createSelectField("sedation1", "誘導／鎮靜藥 1", sedative_options, "Ketamine"));
+    container.appendChild(createSelectField("sedation2", "誘導／鎮靜藥 2（可不選）", ["無", ...sedative_options], "無"));
+    container.appendChild(createSelectField("paralysis", "鬆肌藥", paralysis_options_rsi, "Succinylcholine"));
+    container.appendChild(createSelectField("analgesia", "額外止痛藥（可不選）", ["無", ...analgesic_options], "無"));
+  } else if (mode === MODE_PAINFUL) {
+    container.appendChild(createSelectField("primary1", "主要藥物 1", ["無", ...sedative_options], "Ketamine"));
+    container.appendChild(createSelectField("primary2", "主要藥物 2（可不選）", ["無", ...sedative_options], "無"));
+    container.appendChild(createSelectField("analgesia", "額外止痛藥（可不選）", ["無", ...analgesic_options], "無"));
+  } else if (mode === MODE_IMAGE) {
+    container.appendChild(createSelectField("sedation1", "鎮靜藥 1", ["無", ...sedative_options_extended], "Propofol"));
+    container.appendChild(createSelectField("sedation2", "鎮靜藥 2（可不選）", ["無", ...sedative_options_extended], "無"));
+  } else if (mode === MODE_PROTON) {
+    const protonLocal = ["Propofol", "Dexmedetomidine", "Midazolam", "Ketamine"];
+    container.appendChild(createSelectField("sedation1", "鎮靜藥 1", ["無", ...protonLocal], "Propofol"));
+    container.appendChild(createSelectField("sedation2", "鎮靜藥 2（可不選）", ["無", ...protonLocal], "無"));
+  } else if (mode === MODE_MV) {
+    const mvLocal = ["Midazolam", "Dexmedetomidine", "Propofol", "Ketamine"];
+    container.appendChild(createSelectField("sedation", "鎮靜藥", ["無", ...mvLocal], "Midazolam"));
+    container.appendChild(createSelectField("analgesia", "止痛藥（可不選）", ["無", ...analgesic_options], "無"));
+    container.appendChild(createSelectField("paralysis", "肌肉鬆弛藥（可不選）", ["無", ...paralysis_options_mv], "無"));
+  } else if (mode === MODE_PRESSOR) {
+    container.appendChild(createSelectField("pressor", "升壓藥/強心劑", pressor_options, "Epinephrine"));
+  } else if (mode === MODE_EDUCATION) {
+    info = document.createElement("div");
+    info.className = "small";
+    info.textContent = "此模式無需選擇藥物，按下『計算主要結果』即可顯示教學內容。";
+    container.appendChild(info);
+  }
+  updateInfusionDrugOptions();
+}
+
+function getCurrentModeSelectedInfusionDrugs() {
+  const mode = el("mode").value;
+  const selected = [];
+  function add(name) {
+    if (name && name !== "無" && hasInfusion(name) && !selected.includes(name)) selected.push(name);
+  }
+  if (mode === MODE_SINGLE) add(fieldValues.drug);
+  else if (mode === MODE_PAINFUL) ["primary1", "primary2", "analgesia"].forEach(k => add(fieldValues[k]));
+  else if (mode === MODE_IMAGE || mode === MODE_PROTON) ["sedation1", "sedation2"].forEach(k => add(fieldValues[k]));
+  else if (mode === MODE_MV) ["sedation", "analgesia", "paralysis"].forEach(k => add(fieldValues[k]));
+  else if (mode === MODE_PRESSOR) add(fieldValues.pressor);
+  return selected;
+}
+
+function updateInfusionUnitLabel() {
+  const drug = el("infusionDrug").value;
+  if (drug && hasInfusion(drug)) {
+    const unit = drug_data[drug].infusion_calc_unit;
+    el("targetDoseLabel").textContent = `目標輸注劑量（${unit}）`;
+    el("customDoseLabel").textContent = `目標劑量（${unit}）`;
+  } else {
+    el("targetDoseLabel").textContent = "目標輸注劑量";
+    el("customDoseLabel").textContent = "目標劑量";
+  }
+}
+
+function updateInfusionDrugOptions() {
+  const select = el("infusionDrug");
+  const drugs = getCurrentModeSelectedInfusionDrugs();
+  select.innerHTML = "";
+  if (drugs.length) {
+    drugs.forEach(d => {
+      const opt = document.createElement("option");
+      opt.value = d; opt.textContent = d; select.appendChild(opt);
+    });
+    updateInfusionUnitLabel();
+    renderResult("infusionResult", "");
+  } else {
+    updateInfusionUnitLabel();
+    lastClinicalNote = "";
+    renderResult("infusionResult", "目前此模式沒有可計算流速的已選藥物");
+    markClean();
+  }
+}
+
+function calculateSingleDrug(weight) { return formatStandardDrug(fieldValues.drug, weight); }
+function calculatePressor(weight) { return formatStandardDrug(fieldValues.pressor, weight); }
+function calculateRsi(weight) {
+  const s1 = fieldValues.sedation1, s2 = fieldValues.sedation2, p = fieldValues.paralysis, a = fieldValues.analgesia;
+  if (s2 !== "無" && s2 === s1) return "鎮靜藥 1 和 鎮靜藥 2 不可重複";
+  const lines = ["=== RSI ===", `體重：${weight.toFixed(2)} kg`, ""];
+  [["[誘導／鎮靜藥 1]", s1], ["[誘導／鎮靜藥 2]", s2 === "無" ? null : s2], ["[鬆肌藥]", p], ["[額外止痛藥]", a === "無" ? null : a]].forEach(([title, drug]) => {
+    if (drug) lines.push(title, formatRsiDrug(drug, weight));
+  });
+  return lines.join("\n");
+}
+function calculatePainful(weight) {
+  const p1 = fieldValues.primary1, p2 = fieldValues.primary2, a = fieldValues.analgesia;
+  if (p1 === "無") return "請至少選擇一個主要藥物";
+  if (p2 !== "無" && p2 === p1) return "主要藥物 1 和 主要藥物 2 不可重複";
+  const lines = ["=== 疼痛性處置鎮靜 ===", `體重：${weight.toFixed(2)} kg`, "", "[主要藥物 1]", formatStandardDrug(p1, weight)];
+  if (p2 !== "無") lines.push("", "[主要藥物 2]", formatStandardDrug(p2, weight));
+  if (a !== "無") lines.push("", "[額外止痛藥]", formatStandardDrug(a, weight));
+  return lines.join("\n");
+}
+function calculateImage(weight) {
+  const s1 = fieldValues.sedation1, s2 = fieldValues.sedation2;
+  if (s1 === "無") return "請選擇第一個鎮靜藥";
+  if (s2 !== "無" && s2 === s1) return "鎮靜藥 1 和 鎮靜藥 2 不可重複";
+  const title = el("mode").value === MODE_IMAGE ? "影像檢查鎮靜" : "放射／質子治療鎮靜";
+  const lines = [`=== ${title} ===`, `體重：${weight.toFixed(2)} kg`, "", "[鎮靜藥 1]", formatStandardDrug(s1, weight)];
+  if (s2 !== "無") lines.push("", "[鎮靜藥 2]", formatStandardDrug(s2, weight));
+  return lines.join("\n");
+}
+function calculateMv(weight) {
+  const s = fieldValues.sedation, a = fieldValues.analgesia, p = fieldValues.paralysis;
+  if (s === "無") return "請選擇鎮靜藥";
+  const lines = ["=== 機械通氣持續鎮靜 ===", `體重：${weight.toFixed(2)} kg`, "", "[鎮靜藥]", formatStandardDrug(s, weight)];
+  if (a !== "無") lines.push("", "[止痛藥]", formatStandardDrug(a, weight));
+  if (p !== "無") lines.push("", "[肌肉鬆弛藥]", formatStandardDrug(p, weight));
+  return lines.join("\n");
+}
+
+function calculateMain() {
+  const mode = el("mode").value;
+  if (mode === MODE_EDUCATION) {
+    renderResult("mainResult", educationText());
+    updateInfusionDrugOptions();
+    return;
+  }
+  const weight = parseFloatSafe(el("weight").value);
+  if (weight == null) return renderResult("mainResult", msgError("體重輸入值無效"));
+  if (weight <= 0) return renderResult("mainResult", msgError("體重需大於 0"));
+  let result = "請選擇模式";
+  if (mode === MODE_SINGLE) result = calculateSingleDrug(weight);
+  else if (mode === MODE_RSI) result = calculateRsi(weight);
+  else if (mode === MODE_PAINFUL) result = calculatePainful(weight);
+  else if (mode === MODE_IMAGE || mode === MODE_PROTON) result = calculateImage(weight);
+  else if (mode === MODE_MV) result = calculateMv(weight);
+  else if (mode === MODE_PRESSOR) result = calculatePressor(weight);
+  renderResult("mainResult", result);
+  updateInfusionDrugOptions();
+  markClean();
+}
+
+function calculateInfusionRate() {
+  const weight = parseFloatSafe(el("weight").value);
+  const target = parseFloatSafe(el("infusionTarget").value);
+  const drug = el("infusionDrug").value;
+  if (weight == null || target == null || !drug) { lastClinicalNote = ""; renderResult("infusionResult", msgError("請確認體重、藥物與目標輸注劑量")); return; }
+  if (weight <= 0) { lastClinicalNote = ""; renderResult("infusionResult", msgError("體重需大於 0")); return; }
+  if (target <= 0) { lastClinicalNote = ""; renderResult("infusionResult", msgError("目標輸注劑量需大於 0")); return; }
+  const data = drug_data[drug];
+  const ml = convertTargetToMlPerHr(weight, target, data.infusion_calc_unit, data.standard_concentration_value, data.standard_concentration_unit);
+  if (ml == null) { lastClinicalNote = ""; renderResult("infusionResult", msgError("無法換算流速")); return; }
+  const flowWarning = getFlowPracticalWarning(ml);
+  if (flowWarning) { lastClinicalNote = ""; renderResult("infusionResult", flowWarning); markClean(); return; }
+  const notices = [getUnitNotice(data), getRateWarning(data, target)].filter(Boolean);
+  const lines = [];
+  if (notices.length) { lines.push(...notices, ""); }
+  lines.push("=== 標準濃度算流速 ===");
+  lines.push(`藥物：${drug}`);
+  lines.push(`體重：${weight.toFixed(2)} kg`);
+  lines.push(`目標劑量：${target} ${data.infusion_calc_unit}`);
+  lines.push(`標準濃度：${data.standard_concentration_value} ${data.standard_concentration_unit}`);
+  lines.push(`建議流速：${formatWithApprox(ml, "mL/hr")}`);
+  if (data.diluent_recommendation) lines.push(`建議稀釋液：${data.diluent_recommendation}`);
+  const cr = formatConcentrationRange(data);
+  if (cr) lines.push(`常用濃度範圍：${cr}`);
+  lastClinicalNote = buildClinicalNote(drug, data.standard_concentration_value, weight, ml, target);
+  lines.push("", "※請手動驗算以避免計算錯誤", "※請於醫囑備註標示藥物劑量與最終濃度", "", `臨床備註格式：${lastClinicalNote}`);
+  renderResult("infusionResult", lines.join("\n"));
+  markClean();
+}
+
+function calculateCustomConcentration() {
+  const weight = parseFloatSafe(el("weight").value);
+  const target = parseFloatSafe(el("customDose").value);
+  const flow = parseFloatSafe(el("customFlow").value);
+  const drug = el("infusionDrug").value;
+  if (weight == null || target == null || flow == null || !drug) { lastClinicalNote = ""; renderResult("infusionResult", msgError("請確認體重、藥物、目標劑量與目標流速")); return; }
+  if (weight <= 0) { lastClinicalNote = ""; renderResult("infusionResult", msgError("體重需大於 0")); return; }
+  if (target <= 0) { lastClinicalNote = ""; renderResult("infusionResult", msgError("目標劑量需大於 0")); return; }
+  if (flow <= 0) { lastClinicalNote = ""; renderResult("infusionResult", msgError("目標流速需大於 0")); return; }
+  const data = drug_data[drug];
+  const conc = concentrationNeededForTarget(weight, target, flow, data.infusion_calc_unit, data.standard_concentration_unit);
+  if (conc == null) { lastClinicalNote = ""; renderResult("infusionResult", msgError("無法換算所需濃度")); return; }
+  const warnings = [getUnitNotice(data), getRateWarning(data, target), getConcentrationWarning(data, conc)].filter(Boolean);
+  const lines = [];
+  if (warnings.length) lines.push(...warnings, "");
+  lines.push("=== 客製濃度計算 ===");
+  lines.push(`藥物：${drug}`);
+  lines.push(`體重：${weight.toFixed(2)} kg`);
+  lines.push(`目標劑量：${target} ${data.infusion_calc_unit}`);
+  lines.push(`所需濃度：${formatConcentrationWithConversion(conc, data.standard_concentration_unit, data.recommended_concentration_unit || data.standard_concentration_unit)}（約 ${(Math.round(conc * 10) / 10).toFixed(1)} ${data.standard_concentration_unit}）`);
+  lines.push(`目標流速：${flow.toFixed(2)} mL/hr`);
+  if (data.diluent_recommendation) lines.push(`建議稀釋液：${data.diluent_recommendation}`);
+  const cr = formatConcentrationRange(data);
+  if (cr) lines.push(`常用濃度範圍：${cr}`);
+  lines.push("", "※請手動驗算以避免計算錯誤", "※請於醫囑備註標示藥物劑量與最終濃度");
+  lastClinicalNote = buildClinicalNote(drug, conc, weight, flow, target);
+  lines.push("", `臨床備註格式：${lastClinicalNote}`);
+  renderResult("infusionResult", lines.join("\n"));
+  markClean();
+}
+
+async function copyText(text, okText) {
+  if (resultsDirty) { setStatus("請先重算"); return; }
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus(okText || "已複製");
+  } catch (e) {
+    setStatus("複製失敗");
+  }
+}
+function setStatus(text) {
+  const s = el("copyStatus");
+  s.textContent = text;
+  setTimeout(() => { if (s.textContent === text) s.textContent = ""; }, 1500);
+}
+
+function clearAll() {
+  el("weight").value = "";
+  el("infusionTarget").value = "";
+  el("customDose").value = "1";
+  el("customFlow").value = "1";
+  el("mode").value = MODE_SINGLE;
+  rebuildDynamicFields();
+  el("infusionDrug").innerHTML = "";
+  updateInfusionUnitLabel();
+  lastClinicalNote = "";
+  renderResult("mainResult", "");
+  renderResult("infusionResult", "");
+  markClean();
+  el("weight").focus();
+}
+
+function init() {
+  const mode = el("mode");
+  ALL_MODES.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m; opt.textContent = m; mode.appendChild(opt);
+  });
+  mode.value = MODE_SINGLE;
+  mode.addEventListener("change", () => {
+    rebuildDynamicFields();
+    lastClinicalNote = "";
+    renderResult("mainResult", "");
+    renderResult("infusionResult", "");
+    markClean();
+  });
+  ["weight","infusionTarget","customDose","customFlow"].forEach(id => el(id).addEventListener("input", markDirty));
+  el("infusionDrug").addEventListener("change", () => { updateInfusionUnitLabel(); markDirty(); });
+  el("calcMainBtn").addEventListener("click", calculateMain);
+  el("calcFlowBtn").addEventListener("click", calculateInfusionRate);
+  el("calcConcBtn").addEventListener("click", calculateCustomConcentration);
+  el("copyMainBtn").addEventListener("click", () => copyText(el("mainResult").innerText.trim(), "已複製"));
+  el("copyInfusionBtn").addEventListener("click", () => copyText(el("infusionResult").innerText.trim(), "已複製"));
+  el("copyClinicalBtn").addEventListener("click", () => copyText(lastClinicalNote, "已複製"));
+  el("clearAllBtn").addEventListener("click", clearAll);
+  rebuildDynamicFields();
+  updateInfusionUnitLabel();
+  renderResult("mainResult", "");
+  renderResult("infusionResult", "");
+}
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
