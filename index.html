@@ -75,6 +75,7 @@
   .warning { color: var(--warn); font-weight: 700; }
   .danger { color: var(--danger); font-weight: 700; }
   .small { font-size: 13px; color: var(--muted); }
+  .active-calc { border: 2px solid var(--danger) !important; }
 </style>
 </head>
 <body>
@@ -115,7 +116,7 @@ Developed by Yi-Yu Su, MD, PhD ｜ Taipei Medical University Hospital
         <select id="infusionDrug"></select>
       </div>
 
-      <div class="card" style="padding:10px; margin-bottom:10px;">
+      <div class="card" id="flowBlock" style="padding:10px; margin-bottom:10px;">
         <h3>標準濃度算流速</h3>
         <div class="field">
           <label id="targetDoseLabel" for="infusionTarget">目標輸注劑量</label>
@@ -124,16 +125,16 @@ Developed by Yi-Yu Su, MD, PhD ｜ Taipei Medical University Hospital
         <button class="primary" id="calcFlowBtn">計算流速</button>
       </div>
 
-      <div class="card" style="padding:10px; margin-bottom:10px;">
+      <div class="card" id="concBlock" style="padding:10px; margin-bottom:10px;">
         <h3>指定流速算濃度</h3>
         <div class="field-row">
           <div class="field">
             <label id="customDoseLabel" for="customDose">目標劑量</label>
-            <input id="customDose" inputmode="decimal" value="1" />
+            <input id="customDose" inputmode="decimal" />
           </div>
           <div class="field">
             <label for="customFlow">目標流速（mL/hr）</label>
-            <input id="customFlow" inputmode="decimal" value="1" />
+            <input id="customFlow" inputmode="decimal" />
           </div>
         </div>
         <button class="primary" id="calcConcBtn">計算濃度</button>
@@ -194,7 +195,7 @@ function convertConcentrationValue(value, fromUnit, toUnit) {
   if (fromUnit === "mcg/mL" && toUnit === "mg/mL") return value / 1000;
   return null;
 }
-function formatConcentrationWithConversion(value, fromUnit, toUnit, decimalsFrom=4, decimalsTo=1) {
+function formatConcentrationWithConversion(value, fromUnit, toUnit, decimalsFrom=2, decimalsTo=1) {
   let text = `${value.toFixed(decimalsFrom)} ${fromUnit}`;
   const converted = convertConcentrationValue(value, fromUnit, toUnit);
   if (converted !== null && fromUnit !== toUnit) {
@@ -234,9 +235,11 @@ function getUnitNotice(data) {
   if (unit === "mg/kg/hr" || unit === "mcg/kg/hr") return msgInfo(`本藥物慣用單位為 ${unit}`);
   return null;
 }
-function formatWithApprox(value, unit) {
-  const rounded = Math.round(value * 10) / 10;
-  return `${value.toFixed(2)} ${unit}（約 ${rounded.toFixed(1)} ${unit}）`;
+function formatDisplayRate(value, unit) {
+  return `${value.toFixed(1)} ${unit}`;
+}
+function formatDisplayTargetDose(value, unit) {
+  return `${value.toFixed(3)} ${unit}`;
 }
 function getFlowPracticalWarning(flow) {
   if (flow < MIN_PRACTICAL_FLOW_ML_HR) return msgWarning(`流速低於可實際輸注範圍（<${MIN_PRACTICAL_FLOW_ML_HR} mL/hr），請調整濃度或劑量`);
@@ -577,11 +580,24 @@ function updateInfusionDrugOptions() {
     });
     updateInfusionUnitLabel();
     renderResult("infusionResult", "");
+    setActiveBlock(null);
   } else {
     updateInfusionUnitLabel();
     lastClinicalNote = "";
     renderResult("infusionResult", "目前此模式沒有可計算流速的已選藥物");
     markClean();
+    setActiveBlock(null);
+  }
+}
+
+function setActiveBlock(block) {
+  if (el("flowBlock")) el("flowBlock").classList.remove("active-calc");
+  if (el("concBlock")) el("concBlock").classList.remove("active-calc");
+
+  if (block === "flow" && el("flowBlock")) {
+    el("flowBlock").classList.add("active-calc");
+  } else if (block === "conc" && el("concBlock")) {
+    el("concBlock").classList.add("active-calc");
   }
 }
 
@@ -649,28 +665,29 @@ function calculateInfusionRate() {
   const weight = parseFloatSafe(el("weight").value);
   const target = parseFloatSafe(el("infusionTarget").value);
   const drug = el("infusionDrug").value;
-  if (weight == null || target == null || !drug) { lastClinicalNote = ""; renderResult("infusionResult", msgError("請確認體重、藥物與目標輸注劑量")); return; }
-  if (weight <= 0) { lastClinicalNote = ""; renderResult("infusionResult", msgError("體重需大於 0")); return; }
-  if (target <= 0) { lastClinicalNote = ""; renderResult("infusionResult", msgError("目標輸注劑量需大於 0")); return; }
+  if (weight == null || target == null || !drug) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("請確認體重、藥物與目標輸注劑量")); return; }
+  if (weight <= 0) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("體重需大於 0")); return; }
+  if (target <= 0) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("目標輸注劑量需大於 0")); return; }
   const data = drug_data[drug];
   const ml = convertTargetToMlPerHr(weight, target, data.infusion_calc_unit, data.standard_concentration_value, data.standard_concentration_unit);
-  if (ml == null) { lastClinicalNote = ""; renderResult("infusionResult", msgError("無法換算流速")); return; }
+  if (ml == null) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("無法換算流速")); return; }
   const flowWarning = getFlowPracticalWarning(ml);
-  if (flowWarning) { lastClinicalNote = ""; renderResult("infusionResult", flowWarning); markClean(); return; }
+  if (flowWarning) { lastClinicalNote = ""; setActiveBlock("flow"); renderResult("infusionResult", flowWarning); markClean(); return; }
   const notices = [getUnitNotice(data), getRateWarning(data, target)].filter(Boolean);
   const lines = [];
   if (notices.length) { lines.push(...notices, ""); }
   lines.push("=== 標準濃度算流速 ===");
   lines.push(`藥物：${drug}`);
   lines.push(`體重：${weight.toFixed(2)} kg`);
-  lines.push(`目標劑量：${target} ${data.infusion_calc_unit}`);
+  lines.push(`目標劑量：${formatDisplayTargetDose(target, data.infusion_calc_unit)}`);
   lines.push(`標準濃度：${data.standard_concentration_value} ${data.standard_concentration_unit}`);
-  lines.push(`建議流速：${formatWithApprox(ml, "mL/hr")}`);
+  lines.push(`建議流速：${formatDisplayRate(ml, "mL/hr")}`);
   if (data.diluent_recommendation) lines.push(`建議稀釋液：${data.diluent_recommendation}`);
   const cr = formatConcentrationRange(data);
   if (cr) lines.push(`常用濃度範圍：${cr}`);
   lastClinicalNote = buildClinicalNote(drug, data.standard_concentration_value, weight, ml, target);
   lines.push("", "※請手動驗算以避免計算錯誤", "※請於醫囑備註標示藥物劑量與最終濃度", "", `臨床備註格式：${lastClinicalNote}`);
+  setActiveBlock("flow");
   renderResult("infusionResult", lines.join("\n"));
   markClean();
 }
@@ -680,28 +697,29 @@ function calculateCustomConcentration() {
   const target = parseFloatSafe(el("customDose").value);
   const flow = parseFloatSafe(el("customFlow").value);
   const drug = el("infusionDrug").value;
-  if (weight == null || target == null || flow == null || !drug) { lastClinicalNote = ""; renderResult("infusionResult", msgError("請確認體重、藥物、目標劑量與目標流速")); return; }
-  if (weight <= 0) { lastClinicalNote = ""; renderResult("infusionResult", msgError("體重需大於 0")); return; }
-  if (target <= 0) { lastClinicalNote = ""; renderResult("infusionResult", msgError("目標劑量需大於 0")); return; }
-  if (flow <= 0) { lastClinicalNote = ""; renderResult("infusionResult", msgError("目標流速需大於 0")); return; }
+  if (weight == null || target == null || flow == null || !drug) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("請確認體重、藥物、目標劑量與目標流速")); return; }
+  if (weight <= 0) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("體重需大於 0")); return; }
+  if (target <= 0) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("目標劑量需大於 0")); return; }
+  if (flow <= 0) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("目標流速需大於 0")); return; }
   const data = drug_data[drug];
   const conc = concentrationNeededForTarget(weight, target, flow, data.infusion_calc_unit, data.standard_concentration_unit);
-  if (conc == null) { lastClinicalNote = ""; renderResult("infusionResult", msgError("無法換算所需濃度")); return; }
+  if (conc == null) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("無法換算所需濃度")); return; }
   const warnings = [getUnitNotice(data), getRateWarning(data, target), getConcentrationWarning(data, conc)].filter(Boolean);
   const lines = [];
   if (warnings.length) lines.push(...warnings, "");
   lines.push("=== 客製濃度計算 ===");
   lines.push(`藥物：${drug}`);
   lines.push(`體重：${weight.toFixed(2)} kg`);
-  lines.push(`目標劑量：${target} ${data.infusion_calc_unit}`);
+  lines.push(`目標劑量：${formatDisplayTargetDose(target, data.infusion_calc_unit)}`);
   lines.push(`所需濃度：${formatConcentrationResultText(conc, data.standard_concentration_unit, data.recommended_concentration_unit || data.standard_concentration_unit)}`);
-  lines.push(`目標流速：${flow.toFixed(2)} mL/hr`);
+  lines.push(`目標流速：${formatDisplayRate(flow, "mL/hr")}`);
   if (data.diluent_recommendation) lines.push(`建議稀釋液：${data.diluent_recommendation}`);
   const cr = formatConcentrationRange(data);
   if (cr) lines.push(`常用濃度範圍：${cr}`);
   lines.push("", "※請手動驗算以避免計算錯誤", "※請於醫囑備註標示藥物劑量與最終濃度");
   lastClinicalNote = buildClinicalNote(drug, conc, weight, flow, target);
   lines.push("", `臨床備註格式：${lastClinicalNote}`);
+  setActiveBlock("conc");
   renderResult("infusionResult", lines.join("\n"));
   markClean();
 }
@@ -725,8 +743,8 @@ function setStatus(text) {
 function clearAll() {
   el("weight").value = "";
   el("infusionTarget").value = "";
-  el("customDose").value = "1";
-  el("customFlow").value = "1";
+  el("customDose").value = "";
+  el("customFlow").value = "";
   el("mode").value = MODE_SINGLE;
   rebuildDynamicFields();
   el("infusionDrug").innerHTML = "";
@@ -735,6 +753,7 @@ function clearAll() {
   renderResult("mainResult", "");
   renderResult("infusionResult", "");
   markClean();
+  setActiveBlock(null);
   el("weight").focus();
 }
 
@@ -751,6 +770,7 @@ function init() {
     renderResult("mainResult", "");
     renderResult("infusionResult", "");
     markClean();
+    setActiveBlock(null);
   });
   ["weight","infusionTarget","customDose","customFlow"].forEach(id => el(id).addEventListener("input", markDirty));
   el("infusionDrug").addEventListener("change", () => { updateInfusionUnitLabel(); markDirty(); });
