@@ -141,8 +141,8 @@ Developed by Yi-Yu Su, MD, PhD ｜ Taipei Medical University Hospital
       </div>
 
       <div class="toolbar">
-        <button id="copyClinicalBtn">複製臨床備註</button>
         <button id="copyInfusionBtn">複製結果</button>
+        <button id="copyClinicalBtn">複製臨床備註</button>
       </div>
       <div class="result" id="infusionResult"></div>
       <div class="small" id="copyStatus"></div>
@@ -167,8 +167,9 @@ const paralysis_options_rsi = ["Succinylcholine", "Rocuronium", "Cisatracurium"]
 const paralysis_options_mv = ["Rocuronium", "Cisatracurium"];
 const pressor_options = ["Epinephrine", "Norepinephrine", "Dopamine", "Dobutamine"];
 const single_drug_options = ["Ketamine", "Midazolam", "Propofol", "Dexmedetomidine", "Fentanyl", "Morphine", "Rocuronium", "Cisatracurium", "Epinephrine", "Norepinephrine", "Dopamine", "Dobutamine"];
-const MIN_PRACTICAL_FLOW_ML_HR = 0.05;
-const drug_data = {"Ketamine": {"category": "鎮靜/止痛", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.5, "bolus_high_per_kg": 1.0, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mg/kg/hr", "infusion_low_per_kg": 0.5, "infusion_high_per_kg": 2.0, "infusion_unit_calculated": "mg/hr", "infusion_calc_unit": "mg/kg/hr", "standard_concentration_value": 20, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "20 mg/mL（可用原液 50–100 mg/mL；或稀釋至 20 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 1, "recommended_concentration_high": 20, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 4.0, "note": "具止痛效果、支氣管擴張、注意 emergence phenomenon"}, "Midazolam": {"category": "鎮靜", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.05, "bolus_high_per_kg": 0.1, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 0.5, "infusion_high_per_kg": 3.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "1 mg/mL（建議使用；可由 5 mg/mL 稀釋）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.3, "recommended_concentration_high": 5, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 5.0, "note": "呼吸抑制、低血壓、無止痛效果"}, "Propofol": {"category": "鎮靜", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.5, "bolus_high_per_kg": 1.0, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mg/kg/hr", "infusion_low_per_kg": 1.0, "infusion_high_per_kg": 4.0, "infusion_unit_calculated": "mg/hr", "infusion_calc_unit": "mg/kg/hr", "standard_concentration_value": 10, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "10 mg/mL（標準；可稀釋至 ≥2 mg/mL；使用前搖勻）", "diluent_recommendation": "如需稀釋，僅建議使用 D5W", "recommended_concentration_low": 2, "recommended_concentration_high": 10, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 4.0, "note": "短期鎮靜使用；注意呼吸抑制、低血壓與 PRIS 風險"}, "Dexmedetomidine": {"category": "鎮靜", "loading_unit_per_kg": "mcg/kg", "loading_low_per_kg": 0.5, "loading_high_per_kg": 1.0, "loading_unit_calculated": "mcg", "infusion_unit_per_kg": "mcg/kg/hr", "infusion_low_per_kg": 0.2, "infusion_high_per_kg": 1.0, "infusion_unit_calculated": "mcg/hr", "infusion_calc_unit": "mcg/kg/hr", "standard_concentration_value": 4, "standard_concentration_unit": "mcg/mL", "route_bolus": "IV loading dose over 10 min (optional)", "route_infusion": "IV infusion", "dilution": "4 mcg/mL（200 mcg + NS 至 50 mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_high": 4, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 1.5, "note": "心搏過緩、低血壓；loading dose 非常規使用，血流動力不穩者避免；停藥需漸減避免反彈性高血壓"}, "Fentanyl": {"category": "止痛", "bolus_unit_per_kg": "mcg/kg", "bolus_low_per_kg": 0.5, "bolus_high_per_kg": 2.0, "bolus_unit_calculated": "mcg", "infusion_unit_per_kg": "mcg/kg/hr", "infusion_low_per_kg": 0.5, "infusion_high_per_kg": 5.0, "infusion_unit_calculated": "mcg/hr", "infusion_calc_unit": "mcg/kg/hr", "standard_concentration_value": 10, "standard_concentration_unit": "mcg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "10 mcg/mL（常用；亦可 2 mcg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 10, "recommended_concentration_high": 50, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 10.0, "note": "呼吸抑制、胸壁僵硬、IWS 風險"}, "Morphine": {"category": "止痛", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.05, "bolus_high_per_kg": 0.1, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mg/kg/hr", "infusion_low_per_kg": 0.01, "infusion_high_per_kg": 0.04, "infusion_unit_calculated": "mg/hr", "infusion_calc_unit": "mg/kg/hr", "standard_concentration_value": 0.5, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "0.5 mg/mL（常用；範圍 0.2–1 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.1, "recommended_concentration_high": 5, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 0.06, "note": "呼吸抑制、低血壓、組織胺釋放"}, "Rocuronium": {"category": "鬆肌", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.6, "bolus_high_per_kg": 1.2, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 5.0, "infusion_high_per_kg": 12.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 10, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "10 mg/mL（可直接使用；或稀釋至 0.5–5 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.5, "recommended_concentration_high": 10, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 15.0, "note": "肌肉鬆弛藥"}, "Cisatracurium": {"category": "鬆肌", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.1, "bolus_high_per_kg": 0.2, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 1.0, "infusion_high_per_kg": 3.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "建議 infusion 濃度 0.1–0.2 mg/mL；實務上可見 1–2 mg/mL（含原液 2 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.1, "recommended_concentration_high": 2, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 5.0, "note": "肌肉鬆弛藥"}, "Epinephrine": {"category": "升壓藥/強心劑", "has_bolus": true, "bolus_unit_per_kg": "mg/kg/dose", "bolus_low_per_kg": 0.01, "bolus_high_per_kg": 0.01, "bolus_unit_calculated": "mg/dose", "bolus_standard_concentration": "0.1 mg/mL（1:10,000）", "bolus_volume_per_kg": "0.1 mL/kg", "neonate_bolus_note": "Neonate 可用 0.02 mg/kg/dose（= 0.2 mL/kg）", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 0.02, "infusion_high_per_kg": 0.3, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 0.02, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "Continuous IV infusion", "dilution": "常用 10–40 mcg/mL；高濃度需中心靜脈與嚴密監測", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 10, "recommended_concentration_high": 40, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 0.5, "note": "敗血性休克第一線升壓藥，也是CPR常用藥。中心靜脈優先；周邊或骨針僅短時間使用，並嚴密監測滲漏。"}, "Norepinephrine": {"category": "升壓藥/強心劑", "has_bolus": false, "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 0.02, "infusion_high_per_kg": 0.5, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 0.016, "standard_concentration_unit": "mg/mL", "route_infusion": "Continuous IV infusion", "dilution": "常用 16–64 mcg/mL", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 16, "recommended_concentration_high": 64, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 1.0, "note": "敗血性休克第一線升壓藥。中心靜脈優先；周邊或骨針僅短時間使用並嚴密監測滲漏。"}, "Dopamine": {"category": "升壓藥/強心劑", "has_bolus": false, "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 2.0, "infusion_high_per_kg": 10.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1.6, "standard_concentration_unit": "mg/mL", "route_infusion": "Continuous IV infusion", "dilution": "常用 800–3200 mcg/mL", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 800, "recommended_concentration_high": 3200, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 15.0, "note": "升壓/正性肌力支持；可能增加心律不整風險。"}, "Dobutamine": {"category": "升壓藥/強心劑", "has_bolus": false, "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 1.0, "infusion_high_per_kg": 10.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1.0, "standard_concentration_unit": "mg/mL", "route_infusion": "Continuous IV infusion", "dilution": "常用 1000–4000 mcg/mL", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 1000, "recommended_concentration_high": 4000, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 15.0, "note": "以增加心輸出為主，較適用低心輸出狀態；注意心搏過速與低血壓。"}};
+const MIN_PRACTICAL_FLOW_ML_HR = 0.1;
+const LOW_CONCENTRATION_BLOCK_RATIO = 0.30;
+const drug_data = {"Ketamine": {"category": "鎮靜/止痛", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.5, "bolus_high_per_kg": 1.0, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mg/kg/hr", "infusion_low_per_kg": 0.5, "infusion_high_per_kg": 2.0, "infusion_unit_calculated": "mg/hr", "infusion_calc_unit": "mg/kg/hr", "standard_concentration_value": 20, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "20 mg/mL（可用原液 50–100 mg/mL；或稀釋至 20 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 1, "recommended_concentration_high": 20, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 4.0, "note": "具止痛效果、支氣管擴張、注意 emergence phenomenon"}, "Midazolam": {"category": "鎮靜", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.05, "bolus_high_per_kg": 0.1, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 0.5, "infusion_high_per_kg": 3.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "1 mg/mL（建議使用；可由 5 mg/mL 稀釋）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.3, "recommended_concentration_high": 5, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 5.0, "note": "呼吸抑制、低血壓、無止痛效果"}, "Propofol": {"category": "鎮靜", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.5, "bolus_high_per_kg": 1.0, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mg/kg/hr", "infusion_low_per_kg": 1.0, "infusion_high_per_kg": 4.0, "infusion_unit_calculated": "mg/hr", "infusion_calc_unit": "mg/kg/hr", "standard_concentration_value": 10, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "10 mg/mL（標準；可稀釋至 ≥2 mg/mL；使用前搖勻）", "diluent_recommendation": "如需稀釋，僅建議使用 D5W", "recommended_concentration_low": 2, "recommended_concentration_high": 10, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 4.0, "note": "短期鎮靜使用；注意呼吸抑制、低血壓與 PRIS 風險"}, "Dexmedetomidine": {"category": "鎮靜", "loading_unit_per_kg": "mcg/kg", "loading_low_per_kg": 0.5, "loading_high_per_kg": 1.0, "loading_unit_calculated": "mcg", "infusion_unit_per_kg": "mcg/kg/hr", "infusion_low_per_kg": 0.2, "infusion_high_per_kg": 1.0, "infusion_unit_calculated": "mcg/hr", "infusion_calc_unit": "mcg/kg/hr", "standard_concentration_value": 4, "standard_concentration_unit": "mcg/mL", "route_bolus": "IV loading dose over 10 min (optional)", "route_infusion": "IV infusion", "dilution": "4 mcg/mL（200 mcg + NS 至 50 mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_high": 4, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 1.5, "note": "心搏過緩、低血壓；loading dose 非常規使用，血流動力不穩者避免；停藥需漸減避免反彈性高血壓"}, "Fentanyl": {"category": "止痛", "bolus_unit_per_kg": "mcg/kg", "bolus_low_per_kg": 0.5, "bolus_high_per_kg": 2.0, "bolus_unit_calculated": "mcg", "infusion_unit_per_kg": "mcg/kg/hr", "infusion_low_per_kg": 0.5, "infusion_high_per_kg": 5.0, "infusion_unit_calculated": "mcg/hr", "infusion_calc_unit": "mcg/kg/hr", "standard_concentration_value": 10, "standard_concentration_unit": "mcg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "10 mcg/mL（常用；亦可 2 mcg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 10, "recommended_concentration_high": 50, "recommended_concentration_unit": "mcg/mL", "clinical_rounding_steps": [2, 5, 10, 20, 40], "clinical_rounding_steps_unit": "mcg/mL", "absolute_max_infusion": 10.0, "note": "呼吸抑制、胸壁僵硬、IWS 風險"}, "Morphine": {"category": "止痛", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.05, "bolus_high_per_kg": 0.1, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mg/kg/hr", "infusion_low_per_kg": 0.01, "infusion_high_per_kg": 0.04, "infusion_unit_calculated": "mg/hr", "infusion_calc_unit": "mg/kg/hr", "standard_concentration_value": 0.5, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "0.5 mg/mL（常用；範圍 0.2–1 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.1, "recommended_concentration_high": 5, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 0.06, "note": "呼吸抑制、低血壓、組織胺釋放"}, "Rocuronium": {"category": "鬆肌", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.6, "bolus_high_per_kg": 1.2, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 5.0, "infusion_high_per_kg": 12.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 10, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "10 mg/mL（可直接使用；或稀釋至 0.5–5 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.5, "recommended_concentration_high": 10, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 15.0, "note": "肌肉鬆弛藥"}, "Cisatracurium": {"category": "鬆肌", "bolus_unit_per_kg": "mg/kg", "bolus_low_per_kg": 0.1, "bolus_high_per_kg": 0.2, "bolus_unit_calculated": "mg", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 1.0, "infusion_high_per_kg": 3.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "IV infusion", "dilution": "建議 infusion 濃度 0.1–0.2 mg/mL；實務上可見 1–2 mg/mL（含原液 2 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 0.1, "recommended_concentration_high": 2, "recommended_concentration_unit": "mg/mL", "absolute_max_infusion": 5.0, "note": "肌肉鬆弛藥"}, "Epinephrine": {"category": "升壓藥/強心劑", "has_bolus": true, "bolus_unit_per_kg": "mg/kg/dose", "bolus_low_per_kg": 0.01, "bolus_high_per_kg": 0.01, "bolus_unit_calculated": "mg/dose", "bolus_standard_concentration": "0.1 mg/mL（1:10,000）", "bolus_volume_per_kg": "0.1 mL/kg", "neonate_bolus_note": "Neonate 可用 0.02 mg/kg/dose（= 0.2 mL/kg）", "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 0.02, "infusion_high_per_kg": 0.3, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 0.02, "standard_concentration_unit": "mg/mL", "route_bolus": "IV bolus", "route_infusion": "Continuous IV infusion", "dilution": "常用 10–40 mcg/mL；高濃度需中心靜脈與嚴密監測", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 10, "recommended_concentration_high": 40, "recommended_concentration_unit": "mcg/mL", "clinical_rounding_steps": [2, 5, 10, 20, 40], "clinical_rounding_steps_unit": "mcg/mL", "absolute_max_infusion": 0.5, "note": "敗血性休克第一線升壓藥，也是CPR常用藥。中心靜脈優先；周邊或骨針僅短時間使用，並嚴密監測滲漏。"}, "Norepinephrine": {"category": "升壓藥/強心劑", "has_bolus": false, "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 0.02, "infusion_high_per_kg": 0.5, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 0.016, "standard_concentration_unit": "mg/mL", "route_infusion": "Continuous IV infusion", "dilution": "常用 16–64 mcg/mL", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 16, "recommended_concentration_high": 64, "recommended_concentration_unit": "mcg/mL", "clinical_rounding_steps": [2, 5, 10, 20, 40], "clinical_rounding_steps_unit": "mcg/mL", "absolute_max_infusion": 1.0, "note": "敗血性休克第一線升壓藥。中心靜脈優先；周邊或骨針僅短時間使用並嚴密監測滲漏。"}, "Dopamine": {"category": "升壓藥/強心劑", "has_bolus": false, "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 2.0, "infusion_high_per_kg": 10.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1.6, "standard_concentration_unit": "mg/mL", "route_infusion": "Continuous IV infusion", "dilution": "常用 800–3200 mcg/mL", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 800, "recommended_concentration_high": 3200, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 15.0, "note": "升壓/正性肌力支持；可能增加心律不整風險。"}, "Dobutamine": {"category": "升壓藥/強心劑", "has_bolus": false, "infusion_unit_per_kg": "mcg/kg/min", "infusion_low_per_kg": 1.0, "infusion_high_per_kg": 10.0, "infusion_unit_calculated": "mcg/min", "infusion_calc_unit": "mcg/kg/min", "standard_concentration_value": 1.0, "standard_concentration_unit": "mg/mL", "route_infusion": "Continuous IV infusion", "dilution": "常用 1000–4000 mcg/mL", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "recommended_concentration_low": 1000, "recommended_concentration_high": 4000, "recommended_concentration_unit": "mcg/mL", "absolute_max_infusion": 15.0, "note": "以增加心輸出為主，較適用低心輸出狀態；注意心搏過速與低血壓。"}};
 const rsi_drug_data = {"Ketamine": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.5, "dose_high_per_kg": 1.0, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "20 mg/mL（可用原液 50–100 mg/mL；或稀釋至 20 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "note": "誘導/鎮靜藥，且具止痛效果"}, "Midazolam": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.05, "dose_high_per_kg": 0.1, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "1 mg/mL（建議使用；可由 5 mg/mL 稀釋）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "note": "誘導/鎮靜藥"}, "Propofol": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.5, "dose_high_per_kg": 1.0, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "10 mg/mL（標準；可稀釋至 ≥2 mg/mL；使用前搖勻）", "diluent_recommendation": "如需稀釋，僅建議使用 D5W", "note": "誘導/鎮靜藥，注意低血壓"}, "Fentanyl": {"dose_unit_per_kg": "mcg/kg", "dose_low_per_kg": 0.5, "dose_high_per_kg": 2.0, "dose_unit_calculated": "mcg", "route": "IV bolus", "dilution": "10 mcg/mL（常用；亦可 2 mcg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "note": "額外止痛藥"}, "Morphine": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.05, "dose_high_per_kg": 0.1, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "0.5 mg/mL（常用；範圍 0.2–1 mg/mL）", "diluent_recommendation": "可使用 D5W 或 NS 稀釋", "note": "額外止痛藥"}, "Succinylcholine": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 1.0, "dose_high_per_kg": 2.0, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "可直接使用（undiluted）", "note": "鬆肌藥"}, "Rocuronium": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.6, "dose_high_per_kg": 1.2, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "10 mg/mL（可直接使用；或稀釋至 0.5–5 mg/mL）", "note": "鬆肌藥"}, "Cisatracurium": {"dose_unit_per_kg": "mg/kg", "dose_low_per_kg": 0.1, "dose_high_per_kg": 0.2, "dose_unit_calculated": "mg", "route": "IV bolus", "dilution": "1–2 mg/mL（常用；建議範圍 0.1–0.2 mg/mL）", "note": "鬆肌藥"}};
 
 let fieldValues = {};
@@ -203,20 +204,32 @@ function formatConcentrationWithConversion(value, fromUnit, toUnit, decimalsFrom
   }
   return text;
 }
-function formatConcentrationResultText(value, standardUnit, recommendedUnit) {
+function formatConcentrationResultText(value, standardUnit, recommendedUnit, data=null) {
   const base = formatConcentrationWithConversion(value, standardUnit, recommendedUnit);
-  const approxStandard = Math.round(value * 10) / 10;
-  if (standardUnit !== recommendedUnit && Math.abs(approxStandard) < 0.05) {
-    const converted = convertConcentrationValue(value, standardUnit, recommendedUnit);
-    if (converted !== null) {
-      const approxConverted = Math.round(converted * 10) / 10;
-      const approxText = Math.abs(approxConverted - Math.round(approxConverted)) < 1e-9
-        ? `${Math.round(approxConverted)}`
-        : approxConverted.toFixed(1);
-      return `${base}（約 ${approxText} ${recommendedUnit}）`;
+  const clinicalConc = getClinicalConcentrationValue(value, standardUnit, recommendedUnit, data);
+  const approx = formatClinicalNumber(clinicalConc.value, 1);
+  return `${base}（約 ${approx.text} ${clinicalConc.unit}）`;
+}
+function getClinicalConcentrationValue(concentration, standardUnit, recommendedUnit, data=null) {
+  if (data) {
+    const steps = data.clinical_rounding_steps;
+    const stepsUnit = data.clinical_rounding_steps_unit;
+    if (steps && stepsUnit) {
+      const concentrationForSteps = convertConcentrationValue(concentration, standardUnit, stepsUnit);
+      if (concentrationForSteps !== null && concentrationForSteps <= Math.max(...steps)) {
+        for (const step of steps) {
+          if (concentrationForSteps <= step) {
+            return { value: step, unit: stepsUnit };
+          }
+        }
+      }
     }
   }
-  return `${base}（約 ${approxStandard.toFixed(1)} ${standardUnit}）`;
+  if (standardUnit !== recommendedUnit && Math.abs(concentration) < 0.05) {
+    const converted = convertConcentrationValue(concentration, standardUnit, recommendedUnit);
+    if (converted !== null) return { value: converted, unit: recommendedUnit };
+  }
+  return { value: concentration, unit: standardUnit };
 }
 function formatConcentrationRange(data) {
   const low = data.recommended_concentration_low;
@@ -241,6 +254,21 @@ function formatDisplayRate(value, unit) {
 function formatDisplayTargetDose(value, unit) {
   return `${value.toFixed(3)} ${unit}`;
 }
+function formatClinicalNumber(value, preferredDecimals, maxDecimals=6, minSigDigits=1) {
+  if (value === 0) return { value: 0, text: "0" };
+  for (let decimals = preferredDecimals; decimals <= maxDecimals; decimals += 1) {
+    const factor = 10 ** decimals;
+    const rounded = Math.sign(value) * Math.round((Math.abs(value) + Number.EPSILON) * factor) / factor;
+    const digitText = Math.abs(rounded).toFixed(decimals).replace(".", "").replace(/^0+/, "");
+    if (rounded !== 0 && digitText.length >= minSigDigits) {
+      return {
+        value: rounded,
+        text: rounded.toFixed(decimals).replace(/0+$/, "").replace(/\.$/, "")
+      };
+    }
+  }
+  return null;
+}
 function getFlowPracticalWarning(flow) {
   if (flow < MIN_PRACTICAL_FLOW_ML_HR) return msgWarning(`流速低於可實際輸注範圍（<${MIN_PRACTICAL_FLOW_ML_HR} mL/hr），請調整濃度或劑量`);
   return null;
@@ -261,6 +289,9 @@ function getConcentrationWarning(data, concentration) {
   const converted = convertConcentrationValue(concentration, actualUnit, recommendedUnit);
   if (converted === null) return msgError("濃度單位無法換算");
   if (high != null && converted > high) return msgDanger(`濃度高於建議上限（>${fmtGeneral(high)} ${recommendedUnit}）`);
+  if (low != null && converted < low * LOW_CONCENTRATION_BLOCK_RATIO) {
+    return msgDanger("濃度遠低於常用範圍");
+  }
   if (low != null && converted < low) return msgWarning(`濃度低於常用範圍（<${fmtGeneral(low)} ${recommendedUnit}）`);
   return null;
 }
@@ -268,7 +299,9 @@ function hasInfusion(drugName) {
   return !!(drug_data[drugName] && drug_data[drugName].infusion_calc_unit);
 }
 function fmtGeneral(v) {
-  return Number.isInteger(v) ? String(v) : String(v);
+  if (!Number.isFinite(v)) return String(v);
+  if (Number.isInteger(v)) return String(v);
+  return String(Number(v.toPrecision(12)));
 }
 function markDirty() {
   resultsDirty = true;
@@ -314,15 +347,20 @@ function concentrationNeededForTarget(weight, targetRate, targetFlow, calcUnit, 
 
 function buildClinicalNote(drug, concentration, weight, flow, targetRate) {
   const data = drug_data[drug];
-  let concUnit = data.recommended_concentration_unit || data.standard_concentration_unit;
-  let concValue = convertConcentrationValue(concentration, data.standard_concentration_unit, concUnit);
-  if (concValue === null) {
-    concValue = concentration;
-    concUnit = data.standard_concentration_unit;
-  }
-  const roundedConcValue = Math.round(concValue * 10) / 10;
-  const roundedFlow = Math.round(flow * 10) / 10;
-  const concText = Math.abs(roundedConcValue - Math.round(roundedConcValue)) < 1e-9 ? `${Math.round(roundedConcValue)} ${concUnit}` : `${roundedConcValue.toFixed(1)} ${concUnit}`;
+  const clinicalConc = getClinicalConcentrationValue(
+    concentration,
+    data.standard_concentration_unit,
+    data.recommended_concentration_unit || data.standard_concentration_unit,
+    data
+  );
+  const concValue = clinicalConc.value;
+  const concUnit = clinicalConc.unit;
+  const roundedConc = formatClinicalNumber(concValue, 1);
+  const roundedFlowResult = formatClinicalNumber(flow, 1);
+  if (!roundedConc || !roundedFlowResult) return null;
+  const roundedConcValue = roundedConc.value;
+  const roundedFlow = roundedFlowResult.value;
+  const concText = `${roundedConc.text} ${concUnit}`;
   let roundedConcStandard = convertConcentrationValue(roundedConcValue, concUnit, data.standard_concentration_unit);
   if (roundedConcStandard === null) roundedConcStandard = concentration;
   let actualRate;
@@ -345,8 +383,10 @@ function buildClinicalNote(drug, concentration, weight, flow, targetRate) {
     actualRate = targetRate;
     perMlRate = roundedFlow > 0 ? targetRate / roundedFlow : targetRate;
   }
-  const flowText = Math.abs(roundedFlow - Math.round(roundedFlow)) < 1e-9 ? `${Math.round(roundedFlow)}` : `${roundedFlow.toFixed(1).replace(/0$/, "").replace(/\.$/, "")}`;
-  return `${drug} ${concText}, run ${flowText} mL/hr = ${actualRate.toFixed(2)} ${data.infusion_calc_unit}; 1 mL/hr = ${perMlRate.toFixed(2)} ${data.infusion_calc_unit}`;
+  const actualRateText = formatClinicalNumber(actualRate, 2, 6, 2);
+  const perMlRateText = formatClinicalNumber(perMlRate, 2, 6, 2);
+  if (!actualRateText || !perMlRateText) return null;
+  return `${drug} ${concText}, run ${roundedFlowResult.text} mL/hr = ${actualRateText.text} ${data.infusion_calc_unit}; 1 mL/hr = ${perMlRateText.text} ${data.infusion_calc_unit}`;
 }
 
 function educationText() {
@@ -379,7 +419,7 @@ function formatStandardDrug(drugName, weight) {
   const data = drug_data[drugName];
   const unitNotice = getUnitNotice(data);
   if (data.category === "升壓藥/強心劑") {
-    const lines = [`=== ${drugName} ===`, `類別：${data.category}`];
+    const lines = [`=== ${drugName} ===`];
     if (data.has_bolus) {
       const bolus = data.bolus_low_per_kg * weight;
       lines.push(`Bolus 劑量：${data.bolus_low_per_kg} ${data.bolus_unit_per_kg}`);
@@ -685,8 +725,13 @@ function calculateInfusionRate() {
   if (data.diluent_recommendation) lines.push(`建議稀釋液：${data.diluent_recommendation}`);
   const cr = formatConcentrationRange(data);
   if (cr) lines.push(`常用濃度範圍：${cr}`);
-  lastClinicalNote = buildClinicalNote(drug, data.standard_concentration_value, weight, ml, target);
-  lines.push("", "※請手動驗算以避免計算錯誤", "※請於醫囑備註標示藥物劑量與最終濃度", "", `臨床備註格式：${lastClinicalNote}`);
+  lastClinicalNote = buildClinicalNote(drug, data.standard_concentration_value, weight, ml, target) || "";
+  lines.push("", "※請手動驗算以避免計算錯誤", "※請於醫囑備註標示藥物劑量與最終濃度");
+  if (lastClinicalNote) {
+    lines.push("", `臨床備註格式：${lastClinicalNote}`);
+  } else {
+    lines.push("", msgDanger("臨床備註數值過小，為避免四捨五入造成 0 顯示，本次不產生臨床備註"));
+  }
   setActiveBlock("flow");
   renderResult("infusionResult", lines.join("\n"));
   markClean();
@@ -701,6 +746,8 @@ function calculateCustomConcentration() {
   if (weight <= 0) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("體重需大於 0")); return; }
   if (target <= 0) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("目標劑量需大於 0")); return; }
   if (flow <= 0) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("目標流速需大於 0")); return; }
+  const flowWarning = getFlowPracticalWarning(flow);
+  if (flowWarning) { lastClinicalNote = ""; setActiveBlock("conc"); renderResult("infusionResult", flowWarning); markClean(); return; }
   const data = drug_data[drug];
   const conc = concentrationNeededForTarget(weight, target, flow, data.infusion_calc_unit, data.standard_concentration_unit);
   if (conc == null) { lastClinicalNote = ""; setActiveBlock(null); renderResult("infusionResult", msgError("無法換算所需濃度")); return; }
@@ -711,14 +758,20 @@ function calculateCustomConcentration() {
   lines.push(`藥物：${drug}`);
   lines.push(`體重：${weight.toFixed(2)} kg`);
   lines.push(`目標劑量：${formatDisplayTargetDose(target, data.infusion_calc_unit)}`);
-  lines.push(`所需濃度：${formatConcentrationResultText(conc, data.standard_concentration_unit, data.recommended_concentration_unit || data.standard_concentration_unit)}`);
+  lines.push(`所需濃度：${formatConcentrationResultText(conc, data.standard_concentration_unit, data.recommended_concentration_unit || data.standard_concentration_unit, data)}`);
   lines.push(`目標流速：${formatDisplayRate(flow, "mL/hr")}`);
   if (data.diluent_recommendation) lines.push(`建議稀釋液：${data.diluent_recommendation}`);
   const cr = formatConcentrationRange(data);
   if (cr) lines.push(`常用濃度範圍：${cr}`);
   lines.push("", "※請手動驗算以避免計算錯誤", "※請於醫囑備註標示藥物劑量與最終濃度");
-  lastClinicalNote = buildClinicalNote(drug, conc, weight, flow, target);
-  lines.push("", `臨床備註格式：${lastClinicalNote}`);
+  const clinicalNote = buildClinicalNote(drug, conc, weight, flow, target);
+  if (clinicalNote) {
+    lastClinicalNote = clinicalNote;
+    lines.push("", `臨床備註格式：${lastClinicalNote}`);
+  } else {
+    lastClinicalNote = "";
+    lines.push("", msgDanger("臨床備註數值過小，為避免四捨五入造成 0 顯示，本次不產生臨床備註"));
+  }
   setActiveBlock("conc");
   renderResult("infusionResult", lines.join("\n"));
   markClean();
