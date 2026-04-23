@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ICU Drug Calculator v1.00</title>
+<title>ICU Drug Calculator v1.01</title>
 <style>
   :root {
     --bg: #f6f7fb;
@@ -80,7 +80,7 @@
 <body>
 <div class="page">
   <div class="header">
-    <div class="header-meta">ICU Drug Calculator v1.00 ｜ Last update: 2026-04-21
+    <div class="header-meta">ICU Drug Calculator v1.01 ｜ Last update: 2026-04-23
 Developed by Yi-Yu Su, MD, PhD ｜ Taipei Medical University Hospital
 ※本工具僅供臨床輔助，請手動驗算並依實際情況判斷</div>
     <button id="clearAllBtn">清空全部</button>
@@ -323,22 +323,27 @@ function buildClinicalNote(drug, concentration, weight, flow, targetRate) {
   let roundedConcStandard = convertConcentrationValue(roundedConcValue, concUnit, data.standard_concentration_unit);
   if (roundedConcStandard === null) roundedConcStandard = concentration;
   let actualRate;
+  let perMlRate;
   const calcUnit = data.infusion_calc_unit;
   if (calcUnit === "mg/kg/hr") {
     actualRate = (roundedFlow * roundedConcStandard) / weight;
+    perMlRate = roundedConcStandard / weight;
   } else if (calcUnit === "mcg/kg/hr") {
     const totalPerHr = data.standard_concentration_unit === "mg/mL" ? roundedFlow * roundedConcStandard * 1000 : roundedFlow * roundedConcStandard;
+    const perMlHr = data.standard_concentration_unit === "mg/mL" ? roundedConcStandard * 1000 : roundedConcStandard;
     actualRate = totalPerHr / weight;
+    perMlRate = perMlHr / weight;
   } else if (calcUnit === "mcg/kg/min") {
     const totalPerHr = data.standard_concentration_unit === "mg/mL" ? roundedFlow * roundedConcStandard * 1000 : roundedFlow * roundedConcStandard;
+    const perMlHr = data.standard_concentration_unit === "mg/mL" ? roundedConcStandard * 1000 : roundedConcStandard;
     actualRate = totalPerHr / weight / 60;
+    perMlRate = perMlHr / weight / 60;
   } else {
     actualRate = targetRate;
+    perMlRate = roundedFlow > 0 ? targetRate / roundedFlow : targetRate;
   }
-  let diluentText = (data.diluent_recommendation || "").replace("可使用 ", "").replace(" 稀釋", "");
-  if (!diluentText) diluentText = "D5W/NS";
   const flowText = Math.abs(roundedFlow - Math.round(roundedFlow)) < 1e-9 ? `${Math.round(roundedFlow)}` : `${roundedFlow.toFixed(1).replace(/0$/, "").replace(/\.$/, "")}`;
-  return `${drug} ${concText} in ${diluentText}, run ${flowText} mL/hr = ${actualRate.toFixed(2)} ${data.infusion_calc_unit}`;
+  return `${drug} ${concText}, run ${flowText} mL/hr = ${actualRate.toFixed(2)} ${data.infusion_calc_unit}; 1 mL/hr = ${perMlRate.toFixed(2)} ${data.infusion_calc_unit}`;
 }
 
 function educationText() {
